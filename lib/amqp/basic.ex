@@ -6,7 +6,6 @@ defmodule AMQP.Basic do
   require Record
   import AMQP.Core
   alias AMQP.Utils
-  alias AMQP.Channel
 
   Record.defrecordp :amqp_msg, [props: p_basic(), payload: ""]
 
@@ -49,7 +48,7 @@ defmodule AMQP.Basic do
       :ok
 
   """
-  def publish(%Channel{pid: pid}, exchange, routing_key, payload, options \\ []) do
+  def publish(pid, exchange, routing_key, payload, options \\ []) do
     basic_publish =
       basic_publish(exchange:    exchange,
                     routing_key: routing_key,
@@ -70,16 +69,16 @@ defmodule AMQP.Basic do
               user_id:          Keyword.get(options, :user_id,          :undefined),
               app_id:           Keyword.get(options, :app_id,           :undefined),
               cluster_id:       Keyword.get(options, :cluster_id,       :undefined))
-    :amqp_channel.cast pid, basic_publish, amqp_msg(props: p_basic, payload: payload)
+    Bunny.Channel.cast pid, basic_publish, amqp_msg(props: p_basic, payload: payload)
   end
 
   @doc """
   Sets the message prefetch count or prefetech size (in bytes). If `global` is set to `true` this
   applies to the entire Connection, otherwise it applies only to the specified Channel.
   """
-  def qos(%Channel{pid: pid}, options \\ []) do
+  def qos(pid, options \\ []) do
     basic_qos_ok() =
-      :amqp_channel.call pid,
+      Bunny.Channel.call pid,
                          basic_qos(prefetch_size:  Keyword.get(options, :prefetch_size,  0),
                                    prefetch_count: Keyword.get(options, :prefetch_count, 0),
                                    global:         Keyword.get(options, :global,         false))
@@ -90,16 +89,16 @@ defmodule AMQP.Basic do
   Acknowledges one or more messages. If `multiple` is set to `true`, all messages up to the one
   specified by `delivery_tag` are considered acknowledged by the server.
   """
-  def ack(%Channel{pid: pid}, delivery_tag, options \\ []) do
-    :amqp_channel.call pid, basic_ack(delivery_tag: delivery_tag,
+  def ack(pid, delivery_tag, options \\ []) do
+    Bunny.Channel.call pid, basic_ack(delivery_tag: delivery_tag,
                                       multiple: Keyword.get(options, :multiple, false))
   end
 
   @doc """
   Rejects (and, optionally, requeues) a message.
   """
-  def reject(%Channel{pid: pid}, delivery_tag, options \\ []) do
-    :amqp_channel.call pid, basic_reject(delivery_tag: delivery_tag,
+  def reject(pid, delivery_tag, options \\ []) do
+    Bunny.Channel.call pid, basic_reject(delivery_tag: delivery_tag,
                                          requeue: Keyword.get(options, :requeue, true))
   end
 
@@ -111,8 +110,8 @@ defmodule AMQP.Basic do
   This is a RabbitMQ specific extension to AMQP 0.9.1. It is equivalent to reject, but allows rejecting
   multiple messages using the `multiple` option.
   """
-  def nack(%Channel{pid: pid}, delivery_tag, options \\ []) do
-    :amqp_channel.call pid, basic_nack(delivery_tag: delivery_tag,
+  def nack(pid, delivery_tag, options \\ []) do
+    Bunny.Channel.call pid, basic_nack(delivery_tag: delivery_tag,
                                        multiple: Keyword.get(options, :multiple, false),
                                        requeue: Keyword.get(options, :requeue,   true))
   end
@@ -132,8 +131,8 @@ defmodule AMQP.Basic do
   has taken responsibility for it. In general, a lot of applications will not want these semantics, rather, they
   will want to explicitly acknowledge the receipt of a message and have `no_ack` with the default value of false.
   """
-  def get(%Channel{pid: pid}, queue, options \\ []) do
-    case :amqp_channel.call pid, basic_get(queue: queue, no_ack: Keyword.get(options, :no_ack, false)) do
+  def get(pid, queue, options \\ []) do
+    case Bunny.Channel.call pid, basic_get(queue: queue, no_ack: Keyword.get(options, :no_ack, false)) do
       {basic_get_ok(delivery_tag: delivery_tag,
                     redelivered: redelivered,
                     exchange: exchange,
@@ -184,8 +183,8 @@ defmodule AMQP.Basic do
   potentially delivering it to another subscriber. Otherwise it will be redelivered
   to the original recipient.
   """
-  def recover(%Channel{pid: pid}, options \\ []) do
-    :amqp_channel.call pid, basic_recover(requeue: Keyword.get(options, :requeue, false))
+  def recover(pid, options \\ []) do
+    Bunny.Channel.call pid, basic_recover(requeue: Keyword.get(options, :requeue, false))
   end
 
   @doc """
@@ -205,7 +204,7 @@ defmodule AMQP.Basic do
     * `{:basic_cancel_ok, %{consumer_tag: consumer_tag}}` - Sent to the consumer process after a call to Basic.cancel
 
   """
-  def consume(%Channel{} = chan, queue, consumer_pid \\ nil, options \\ []) do
+  def consume(chan, queue, consumer_pid \\ nil, options \\ []) do
     basic_consume =
       basic_consume(queue: queue,
                     consumer_tag: Keyword.get(options, :consumer_tag, ""),
@@ -220,12 +219,12 @@ defmodule AMQP.Basic do
     adapter_pid = spawn fn ->
       Process.flag(:trap_exit, true)
       Process.monitor(consumer_pid)
-      Process.monitor(chan.pid)
+      Process.monitor(chan)
       do_start_consumer(chan, consumer_pid)
     end
 
     basic_consume_ok(consumer_tag: consumer_tag) =
-      :amqp_channel.subscribe(chan.pid, basic_consume, adapter_pid)
+      Bunny.Channel.subscribe(chan, basic_consume, adapter_pid)
 
     {:ok, consumer_tag}
   end
@@ -301,9 +300,9 @@ defmodule AMQP.Basic do
   mean the server will not send any more messages for that consumer. The client may receive an
   arbitrary number of messages in between sending the cancel method and receiving the reply.
   """
-  def cancel(%Channel{pid: pid}, consumer_tag, options \\ []) do
+  def cancel(pid, consumer_tag, options \\ []) do
     basic_cancel = basic_cancel(consumer_tag: consumer_tag, nowait: Keyword.get(options, :no_wait, false))
-    basic_cancel_ok(consumer_tag: consumer_tag) = :amqp_channel.call pid, basic_cancel
+    basic_cancel_ok(consumer_tag: consumer_tag) = Bunny.Channel.call pid, basic_cancel
     {:ok, consumer_tag}
   end
 end

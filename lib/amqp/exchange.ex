@@ -5,7 +5,6 @@ defmodule AMQP.Exchange do
 
   import AMQP.Core
 
-  alias AMQP.Channel
 
   @doc """
   Declares an Exchange. The default Exchange type is `direct`.
@@ -29,7 +28,7 @@ but only when bound to other exchanges. Internal exchanges are used to construct
 wiring that is not visible to applications.
 
   """
-  def declare(%Channel{pid: pid}, exchange, type \\ :direct, options \\ []) do
+  def declare(pid, exchange, type \\ :direct, options \\ []) do
     exchange_declare =
       exchange_declare(exchange:    exchange,
                        type:        Atom.to_string(type),
@@ -39,7 +38,7 @@ wiring that is not visible to applications.
                        internal:    Keyword.get(options, :internal,    false),
                        nowait:      Keyword.get(options, :no_wait,     false),
                        arguments:   Keyword.get(options, :arguments,   []))
-    exchange_declare_ok() = :amqp_channel.call pid, exchange_declare
+    exchange_declare_ok() = Bunny.Channel.call pid, exchange_declare
     :ok
   end
 
@@ -47,12 +46,12 @@ wiring that is not visible to applications.
   Deletes an Exchange by name. When an Exchange is deleted all bindings to it are
   also deleted
   """
-  def delete(%Channel{pid: pid}, exchange, options \\ []) do
+  def delete(pid, exchange, options \\ []) do
     exchange_delete =
       exchange_delete(exchange:  exchange,
                       if_unused: Keyword.get(options, :if_unused, false),
                       nowait:    Keyword.get(options, :no_wait,   false))
-    exchange_delete_ok() = :amqp_channel.call pid, exchange_delete
+    exchange_delete_ok() = Bunny.Channel.call pid, exchange_delete
     :ok
   end
 
@@ -60,14 +59,14 @@ wiring that is not visible to applications.
   Binds an Exchange to another Exchange or a Queue using the
   exchange.bind AMQP method (a RabbitMQ-specific extension)
   """
-  def bind(%Channel{pid: pid}, destination, source, options \\ []) do
+  def bind(pid, destination, source, options \\ []) do
     exchange_bind =
       exchange_bind(destination: destination,
                     source:      source,
                     routing_key: Keyword.get(options, :routing_key, ""),
                     nowait:      Keyword.get(options, :no_wait,     false),
                     arguments:   Keyword.get(options, :arguments,   []))
-    exchange_bind_ok() = :amqp_channel.call pid, exchange_bind
+    exchange_bind_ok() = Bunny.Channel.call pid, exchange_bind
     :ok
   end
 
@@ -75,35 +74,35 @@ wiring that is not visible to applications.
   Unbinds an Exchange from another Exchange or a Queue using the
   exchange.unbind AMQP method (a RabbitMQ-specific extension)
   """
-  def unbind(%Channel{pid: pid}, destination, source, options \\ []) do
+  def unbind(pid, destination, source, options \\ []) do
     exchange_unbind =
       exchange_unbind(destination: destination,
                       source:      source,
                       routing_key: Keyword.get(options, :routing_key, ""),
                       nowait:      Keyword.get(options, :no_wait,     false),
                       arguments:   Keyword.get(options, :arguments,   []))
-    exchange_unbind_ok() = :amqp_channel.call pid, exchange_unbind
+    exchange_unbind_ok() = Bunny.Channel.call pid, exchange_unbind
     :ok
   end
 
   @doc """
   Convenience function to declare an Exchange of type `direct`.
   """
-  def direct(%Channel{} = channel, exchange, options \\ []) do
+  def direct(channel, exchange, options \\ []) do
     declare(channel, exchange, :direct, options)
   end
 
   @doc """
   Convenience function to declare an Exchange of type `fanout`.
   """
-  def fanout(%Channel{} = channel, exchange, options \\ []) do
+  def fanout(channel, exchange, options \\ []) do
     declare(channel, exchange, :fanout, options)
   end
 
   @doc """
   Convenience function to declare an Exchange of type `topic`.
   """
-  def topic(%Channel{} = channel, exchange, options \\ []) do
+  def topic(channel, exchange, options \\ []) do
     declare(channel, exchange, :topic, options)
   end
 

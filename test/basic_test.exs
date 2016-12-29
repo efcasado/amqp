@@ -1,7 +1,6 @@
 defmodule BasicTest do
   use ExUnit.Case
 
-  alias AMQP.Connection
   alias AMQP.Channel
   alias AMQP.Basic
 

@@ -5,7 +5,7 @@ defmodule AMQP.Queue do
 
   import AMQP.Core
 
-  alias AMQP.Channel
+  alias Bunny.Channel
   alias AMQP.Basic
   alias AMQP.Utils
 
@@ -34,7 +34,7 @@ defmodule AMQP.Queue do
                     arguments:   Keyword.get(options, :arguments,   []) |> Utils.to_type_tuple)
     queue_declare_ok(queue:          queue,
                      message_count:  message_count,
-                     consumer_count: consumer_count) = :amqp_channel.call pid, queue_declare
+                     consumer_count: consumer_count) = Channel.call pid, queue_declare
     {:ok, %{queue: queue, message_count: message_count, consumer_count: consumer_count}}
   end
 
@@ -48,7 +48,7 @@ defmodule AMQP.Queue do
                  routing_key: Keyword.get(options, :routing_key, ""),
                  nowait:      Keyword.get(options, :no_wait,     false),
                  arguments:   Keyword.get(options, :arguments,   []) |> Utils.to_type_tuple)
-    queue_bind_ok() = :amqp_channel.call pid, queue_bind
+    queue_bind_ok() = Channel.call pid, queue_bind
     :ok
   end
 
@@ -61,7 +61,7 @@ defmodule AMQP.Queue do
                    exchange:    exchange,
                    routing_key: Keyword.get(options, :routing_key, ""),
                    arguments:   Keyword.get(options, :arguments,   []))
-    queue_unbind_ok() = :amqp_channel.call pid, queue_unbind
+    queue_unbind_ok() = Channel.call pid, queue_unbind
     :ok
   end
 
@@ -74,7 +74,7 @@ defmodule AMQP.Queue do
                    if_unused: Keyword.get(options, :if_unused, false),
                    if_empty:  Keyword.get(options, :if_empty,  false),
                    nowait:    Keyword.get(options, :no_wait,   false))
-    queue_delete_ok(message_count: message_count) = :amqp_channel.call pid, queue_delete
+    queue_delete_ok(message_count: message_count) = Channel.call pid, queue_delete
     {:ok, %{message_count: message_count}}
   end
 
@@ -82,7 +82,7 @@ defmodule AMQP.Queue do
   Discards all messages in the Queue
   """
   def purge(%Channel{pid: pid}, queue) do
-    queue_purge_ok(message_count: message_count) = :amqp_channel.call pid, queue_purge(queue: queue)
+    queue_purge_ok(message_count: message_count) = Channel.call pid, queue_purge(queue: queue)
     {:ok, %{message_count: message_count}}
   end
 

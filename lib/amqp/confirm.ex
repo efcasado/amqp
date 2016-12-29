@@ -5,13 +5,13 @@ defmodule AMQP.Confirm do
 
   import AMQP.Core
 
-  alias AMQP.Channel
+  alias Bunny.Channel
 
   @doc """
   Activates publishing confirmations on the channel.
   """
   def select(%Channel{pid: pid}) do
-    confirm_select_ok() = :amqp_channel.call pid, confirm_select()
+    confirm_select_ok() = Bunny.Channel.call pid, confirm_select()
     :ok
   end
 
@@ -20,7 +20,7 @@ defmodule AMQP.Confirm do
   either ack'd or nack'd by the broker.
   """
   def wait_for_confirms(%Channel{pid: pid}) do
-    :amqp_channel.wait_for_confirms(pid)
+    Channel.wait_for_confirms(pid)
   end
 
   @doc """
@@ -28,7 +28,7 @@ defmodule AMQP.Confirm do
   either ack'd or nack'd by the broker, or until timeout elapses.
   """
   def wait_for_confirms(%Channel{pid: pid}, timeout) do
-    :amqp_channel.wait_for_confirms(pid, timeout)
+    Channel.wait_for_confirms(pid, timeout)
   end
 
   @doc """
@@ -37,11 +37,11 @@ defmodule AMQP.Confirm do
   If any of the messages were nack'd, the calling process dies.
   """
   def wait_for_confirms_or_die(%Channel{pid: pid}) do
-    :amqp_channel.wait_for_confirms_or_die(pid)
+    Channel.wait_for_confirms_or_die(pid)
   end
 
   def wait_for_confirms_or_die(%Channel{pid: pid}, timeout) do
-    :amqp_channel.wait_for_confirms_or_die(pid, timeout)
+    Channel.wait_for_confirms_or_die(pid, timeout)
   end
 
 end
